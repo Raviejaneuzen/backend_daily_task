@@ -1,8 +1,7 @@
 import os
 import json
 import re
-from google import genai
-from google.genai import types
+import google.generativeai as genai
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
 
@@ -15,23 +14,21 @@ GEMINI_MODEL = "gemini-2.5-flash"
 client = None
 if GEMINI_API_KEY:
     try:
-        client = genai.Client(api_key=GEMINI_API_KEY)
+        genai.configure(api_key=GEMINI_API_KEY)
+        client = genai.GenerativeModel(GEMINI_MODEL)
     except Exception as e:
         print(f"Warning: Failed to initialize Gemini Client: {e}")
 
 # Robust Configuration
-config_params = {
-    "temperature": 0.1,
-    "top_p": 0.95,
-    "top_k": 0,
-    "max_output_tokens": 8192,
-}
+generate_config = genai.types.GenerationConfig(
+    temperature=0.1,
+    top_p=0.95,
+    top_k=0,
+    max_output_tokens=8192,
+)
 
-# Only add response_mime_type if it's a known model that supports it
 if "1.5" in GEMINI_MODEL or "2.0" in GEMINI_MODEL or "flash" in GEMINI_MODEL:
-    config_params["response_mime_type"] = "application/json"
-
-generate_config = types.GenerateContentConfig(**config_params)
+    generate_config.response_mime_type = "application/json"
 
 SYSTEM_PROMPT = """
 You are Dhana, an advanced agentic productivity assistant.
@@ -164,17 +161,15 @@ async def process_user_input(text: str, context_tasks: list = None, context_cred
             if "," in image_b64:
                 image_b64 = image_b64.split(",")[1]
             
-            contents.append(
-                types.Part.from_bytes(
-                    data=bytes(image_b64, 'utf-8'),
-                    mime_type="image/jpeg" # Defaulting to jpeg, frontend should send appropriate type or we detect
-                )
-            )
+            import base64
+            contents.append({
+                "mime_type": "image/jpeg",
+                "data": base64.b64decode(image_b64)
+            })
 
-        response = client.models.generate_content(
-            model=GEMINI_MODEL,
+        response = client.generate_content(
             contents=contents,
-            config=generate_config
+            generation_config=generate_config
         )
         
         if not response.text:

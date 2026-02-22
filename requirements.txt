@@ -9,7 +9,7 @@ python-multipart
 apscheduler
 cryptography
 google-generativeai
-google-genai
+
 python-dotenv
 emails
 twilio
