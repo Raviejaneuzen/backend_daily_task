@@ -16,7 +16,8 @@ app.add_middleware(
         "https://daily-repot.onrender.com",
         "https://daily-task-frontend-mu.vercel.app",
         "https://daily-task-frontend-oumq.onrender.com",
-        "https://frontend-daily-task.onrender.com"
+        "https://frontend-daily-task.onrender.com",
+        "https://frontend-daily-task.onrender.com/"
     ],
     allow_credentials=True,
     allow_methods=["*"],
