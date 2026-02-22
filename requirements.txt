@@ -1,0 +1,15 @@
+fastapi
+uvicorn
+motor
+pydantic[email]
+python-jose[cryptography]
+passlib
+bcrypt
+python-multipart
+apscheduler
+cryptography
+google-generativeai
+google-genai
+python-dotenv
+emails
+twilio
