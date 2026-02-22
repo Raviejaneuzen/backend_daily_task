@@ -53,7 +53,7 @@ Your job is to manage a high-fidelity workspace.
    - Explicitly list the available time gaps for **Today** based on the provided schedule.
    - If tomorrow's schedule is also provided, suggest available slots for **Tomorrow** as well.
 3. **Mandatory Dispatch**: Whenever the user asks for their schedule, available time, or if you are reporting a conflict, YOU MUST ALWAYS include a `dispatch_schedule` action in your JSON response. This provides the user with a "link type" (button) to send their data via WhatsApp and triggers the automatic email dispatch.
-4. **Data Accuracy**: Ensure the `summary` field in the `dispatch_schedule` action contains a beautifully formatted, exhaustive list of the schedule you are discussing (today or tomorrow). Use clear headers like "📅 Schedule" and "✨ Available Slots". Keep it professional and scannable.
+4. **Data Accuracy & Visibility**: You MUST explicitly type out the full schedule and the exact available time slots directly inside the `reply` text string! NEVER leave the `reply` string empty or just say "Here they are". The user can only read the `reply` string on the screen. The `summary` field in the `dispatch_schedule` action is ONLY for the background email, so duplicate the information.
 5. **Calculating Gaps**: Assume a standard working day is 09:00 to 21:00 unless otherwise visible. Calculate availability by finding the empty spaces between existing tasks.
 
 **Handling Trip & Plan Conflict Detection (CRITICAL)**:
@@ -122,28 +122,29 @@ async def process_user_input(text: str, context_tasks: list = None, context_cred
         today_date = now.strftime("%Y-%m-%d")
         tomorrow_date = (now + timedelta(days=1)).strftime("%Y-%m-%d")
         
-        # Sort and format tasks for context
-        today_context = ""
-        tomorrow_context = ""
-        
-        today_list = [t for t in context_tasks if t.get("date") == today_date]
-        tomorrow_list = [t for t in context_tasks if t.get("date") == tomorrow_date]
-        
-        if today_list:
-            today_context = "\n\nUser's Schedule for TODAY (" + today_date + "):\n"
-            for task in sorted(today_list, key=lambda x: x.get("start_time", "23:59")):
-                today_context += f"- {task.get('start_time', '')} to {task.get('end_time', '')}: {task.get('title', '')} ({task.get('category', '')})\n"
+        # Sort and format all tasks dynamically
+        from collections import defaultdict
+        grouped_tasks = defaultdict(list)
+        for t in context_tasks:
+            date_str = t.get("date", "Unknown")
+            grouped_tasks[date_str].append(t)
+            
+        schedule_context = "\n\nUser's Schedule Context (Past 1 Year to Future 2 Years):\n"
+        if not grouped_tasks:
+            schedule_context += "The user has no upcoming tasks scheduled.\n"
         else:
-            today_context = "\n\nThe user has no tasks scheduled for today."
+            # Always ensure today and tomorrow are printed even if empty, for clarity.
+            if today_date not in grouped_tasks:
+                schedule_context += f"\n--- Date: TODAY ({today_date}) ---\nNo tasks scheduled for today.\n"
+            if tomorrow_date not in grouped_tasks:
+                schedule_context += f"\n--- Date: TOMORROW ({tomorrow_date}) ---\nNo tasks scheduled for tomorrow.\n"
 
-        if tomorrow_list:
-            tomorrow_context = "\n\nUser's Schedule for TOMORROW (" + tomorrow_date + "):\n"
-            for task in sorted(tomorrow_list, key=lambda x: x.get("start_time", "23:59")):
-                tomorrow_context += f"- {task.get('start_time', '')} to {task.get('end_time', '')}: {task.get('title', '')} ({task.get('category', '')})\n"
-        else:
-            tomorrow_context = "\n\nThe user has no tasks scheduled for tomorrow yet."
-        
-        schedule_context = today_context + tomorrow_context
+            for d in sorted(grouped_tasks.keys()):
+                label = "TODAY" if d == today_date else "TOMORROW" if d == tomorrow_date else d
+                schedule_context += f"\n--- Date: {label} ({d}) ---\n"
+                for task in sorted(grouped_tasks[d], key=lambda x: x.get("start_time", "23:59")):
+                    schedule_context += f"- {task.get('start_time', '')} to {task.get('end_time', '')}: {task.get('title', '')} ({task.get('category', '')})\n"
+
         
         credentials_context = "\n\nCREDENTIAL VAULT CONTEXT:\n"
         if context_credentials:

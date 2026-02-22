@@ -18,8 +18,8 @@ router = APIRouter(prefix="/ai", tags=["ai"])
 @router.post("/chat")
 async def chat(request: AIChatRequest, current_user: dict = Depends(get_current_user)):
     user_id = str(current_user["_id"])
-    today_str = datetime.now().strftime("%Y-%m-%d")
-    tomorrow_str = (datetime.now() + timedelta(days=1)).strftime("%Y-%m-%d")
+    past_date = (datetime.now() - timedelta(days=365)).strftime("%Y-%m-%d")
+    future_date = (datetime.now() + timedelta(days=365 * 2)).strftime("%Y-%m-%d")
     
     all_context_tasks = []
     collections = [tasks_collection, work_collection, meeting_collection, routine_collection, personal_collection]
@@ -27,7 +27,7 @@ async def chat(request: AIChatRequest, current_user: dict = Depends(get_current_
     for coll in collections:
         cursor = coll.find({
             "user_id": user_id,
-            "date": {"$in": [today_str, tomorrow_str]}
+            "date": {"$gte": past_date, "$lte": future_date}
         })
         async for task in cursor:
             task["id"] = str(task["_id"])
